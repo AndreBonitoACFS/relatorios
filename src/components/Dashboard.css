@@ -1,0 +1,96 @@
+#dashboard-container {
+    padding: 24px;
+    display: flex;
+    flex-direction: row;
+    gap: 32px;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+#dashboard-actions {
+    margin-bottom: 16px;
+}
+
+#btn-export-pdf {
+    background-color: #16a34a;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+
+#btn-export-pdf:hover {
+    background-color: #15803d;
+}
+
+#dashboard-process-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 220px;
+}
+
+.btn-processo {
+    padding: 10px;
+    border-radius: 6px;
+    background-color: white;
+    border: 1px solid #ccc;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-processo.selected {
+    background-color: #2563eb;
+    color: white;
+}
+
+#dashboard-main {
+    display: flex;
+    flex-direction: row;
+    gap: 32px;
+    flex-grow: 1;
+    justify-content: space-between;
+}
+
+#grafico-wrapper {
+    width: 400px;
+    min-width: 400px;
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+#info-wrapper {
+    flex-grow: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.info-card {
+    background-color: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.info-label {
+    color: #374151;
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: block;
+    font-size: 0.9rem;
+}
+
+.info-value {
+    color: #111827;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
