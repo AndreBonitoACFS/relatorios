@@ -72,7 +72,11 @@ function App() {
         <h1 className="text-3xl font-bold text-gray-800 mb-6">{fileName}</h1>
 
         {selectedData.length > 0 && (
-          <Dashboard data={selectedData} tabName={selectedTab} />
+          <Dashboard
+            data={data[selectedTab]}
+            tabName={selectedTab}
+            fileName={fileName}
+          />
         )}
       </div>
     </div>

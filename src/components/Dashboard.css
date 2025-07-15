@@ -1,14 +1,24 @@
 #dashboard-container {
-    padding: 24px;
     display: flex;
     flex-direction: row;
-    gap: 32px;
+    gap: 10px;
     width: 100%;
     max-width: 1600px;
     margin: 0 auto;
+    padding: 10px;
+}
+
+#sidebar-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 220px;
 }
 
 #dashboard-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-bottom: 16px;
 }
 
@@ -54,23 +64,26 @@
     gap: 32px;
     flex-grow: 1;
     justify-content: space-between;
+    overflow: visible;
 }
 
 #grafico-wrapper {
-    width: 400px;
+    width: 500px;
     min-width: 400px;
     height: 300px;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-shrink: 0;
+    overflow: visible;
 }
 
 #info-wrapper {
     flex-grow: 1;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 16px;
+    align-items: start;
 }
 
 .info-card {
