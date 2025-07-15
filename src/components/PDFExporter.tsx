@@ -90,10 +90,7 @@ const PDFExporter: React.FC<ExportPDFProps> = ({
     };
 
     const restantesOrdenados = Object.entries(dados)
-        .filter(([chave]) => (
-            !destaqueCampos.includes(chave) &&
-            !["Tributos", "Multa", "Juros"].includes(chave)
-        ))
+        .filter(([chave]) => !destaqueCampos.includes(chave))
         .sort((a, b) => String(a[1]).length - String(b[1]).length);
 
     return (
