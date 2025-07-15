@@ -33,7 +33,7 @@ function App() {
       {/* Sidebar fixa */}
       <div className="w-[300px] bg-white p-6 flex flex-col items-center gap-6">
         <img
-          src="/src/assets/logo.png"
+          src="/src/logo.png"
           alt="Logo da empresa"
           style={{ height: "160px", width: "auto" }}
           className="mx-auto"
