@@ -15,9 +15,41 @@ interface PieChartCardProps {
     valorCausa?: number;
 }
 
-const COLORS = ["#4F46E5", "#06B6D4", "#F59E0B"];
+const COLORS = ["#343c47", "#7c8593", "#dbe0e0"];
 
-const PieChartCard: React.FC<PieChartCardProps> = ({ tributos, juros, multa, valorCausa }) => {
+// Label externo que evita corte do "R$"
+const renderLabel = ({
+    cx,
+    cy,
+    midAngle,
+    outerRadius,
+    value,
+}: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 20;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+        <text
+            x={x}
+            y={y}
+            fill="#111827"
+            fontSize={11}
+            textAnchor={x > cx ? "start" : "end"}
+            dominantBaseline="central"
+        >
+            {`R$ ${value.toLocaleString("pt-BR")}`}
+        </text>
+    );
+};
+
+const PieChartCard: React.FC<PieChartCardProps> = ({
+    tributos,
+    juros,
+    multa,
+    valorCausa,
+}) => {
     const data =
         valorCausa && tributos === 0 && multa === 0 && juros === 0
             ? [{ name: "Valor da Causa", value: valorCausa }]
@@ -40,17 +72,16 @@ const PieChartCard: React.FC<PieChartCardProps> = ({ tributos, juros, multa, val
                     <Pie
                         data={data}
                         dataKey="value"
-                        outerRadius={90}
+                        outerRadius={100}
                         innerRadius={40}
                         paddingAngle={2}
-                        label={({ value }) =>
-                            typeof value === "number"
-                                ? `R$ ${value.toLocaleString("pt-BR")}`
-                                : ""
-                        }
+                        label={renderLabel}
                     >
                         {data.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                            />
                         ))}
                     </Pie>
                     <Tooltip

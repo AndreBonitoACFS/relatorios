@@ -8,7 +8,9 @@ function App() {
   const [fileName, setFileName] = useState<string>("");
 
   const handleFileUpload = (file: File) => {
-    setFileName(file.name.replace(".xlsx", ""));
+    // Remove ".xlsx" e também " - Relatório" do final, se existir
+    let name = file.name.replace(".xlsx", "").replace(/ - Relatório$/i, "");
+    setFileName(name);
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -51,15 +53,13 @@ function App() {
 
         <div className="flex flex-col gap-2 w-full">
           <button
-            className={`px-4 py-2 rounded ${selectedTab === "Judicial" ? "bg-blue-600 text-white" : "bg-white border"
-              }`}
+            className={`px-4 py-2 rounded ${selectedTab === "Judicial" ? "bg-blue-600 text-white" : "bg-white border"}`}
             onClick={() => setSelectedTab("Judicial")}
           >
             Judicial
           </button>
           <button
-            className={`px-4 py-2 rounded ${selectedTab === "Administrativo" ? "bg-blue-600 text-white" : "bg-white border"
-              }`}
+            className={`px-4 py-2 rounded ${selectedTab === "Administrativo" ? "bg-blue-600 text-white" : "bg-white border"}`}
             onClick={() => setSelectedTab("Administrativo")}
           >
             Administrativo
@@ -69,7 +69,12 @@ function App() {
 
       {/* Conteúdo fixo ao lado */}
       <div className="flex-1 p-8 overflow-x-auto min-w-[9000px]">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">{fileName}</h1>
+        <h1
+          className="text-3xl font-bold text-gray-800 text-center"
+          style={{ display: "flex", justifyContent: "center" }}
+        >
+          {fileName.replace(/ - Relatório$/i, "")}
+        </h1>
 
         {selectedData.length > 0 && (
           <Dashboard

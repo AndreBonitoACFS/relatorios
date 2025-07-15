@@ -30,7 +30,7 @@ const PDFExporter: React.FC<ExportPDFProps> = ({
     useEffect(() => {
         if (pdfRef.current && !generatedRef.current) {
             generatedRef.current = true;
-            setTimeout(generatePDF, 2500);
+            setTimeout(generatePDF, 2000);
         }
     }, []);
 
@@ -40,161 +40,90 @@ const PDFExporter: React.FC<ExportPDFProps> = ({
     const generatePDF = async () => {
         if (!pdfRef.current) return;
 
-        const infoSection = pdfRef.current.querySelector("#info-section") as HTMLElement;
-        const graphSection = pdfRef.current.querySelector("#graph-section") as HTMLElement;
-
-        if (!infoSection || !graphSection) return;
-
         const pdf = new jsPDF("p", "mm", "a4");
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
         const margin = 10;
-        const usableWidth = pageWidth - margin * 2;
+        const usableWidth = pdf.internal.pageSize.getWidth() - margin * 2;
 
-        // Captura da parte informativa
-        const infoCanvas = await html2canvas(infoSection, { scale: 2, useCORS: true });
-        const infoImg = infoCanvas.toDataURL("image/png");
-        const infoHeight = (infoCanvas.height * usableWidth) / infoCanvas.width;
+        const canvas = await html2canvas(pdfRef.current, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL("image/png");
+        const imgHeight = (canvas.height * usableWidth) / canvas.width;
 
-        // Se couber tudo em uma página, inclui gráfico junto
-        if (infoHeight + 160 <= pageHeight - margin * 2) {
-            const fullCanvas = await html2canvas(pdfRef.current, { scale: 2, useCORS: true });
-            const fullImg = fullCanvas.toDataURL("image/png");
-            const fullHeight = (fullCanvas.height * usableWidth) / fullCanvas.width;
-
-            pdf.addImage(fullImg, "PNG", margin, margin, usableWidth, fullHeight);
-        } else {
-            // Página 1: informações
-            pdf.addImage(infoImg, "PNG", margin, margin, usableWidth, infoHeight);
-
-            // Página 2: gráfico
-            const graphCanvas = await html2canvas(graphSection, { scale: 2, useCORS: true });
-            const graphImg = graphCanvas.toDataURL("image/png");
-            const graphHeight = (graphCanvas.height * usableWidth) / graphCanvas.width;
-
-            pdf.addPage();
-            pdf.addImage(graphImg, "PNG", margin, margin, usableWidth, graphHeight);
-        }
-
+        pdf.addImage(imgData, "PNG", margin, margin, usableWidth, imgHeight);
         pdf.save(`relatorio_${tabName}_${selectedProcesso}.pdf`);
         onFinish();
     };
+
+    const destaqueCampos = ["Espécie", "Valor da Causa", "Distribuição", "Prognóstico"];
+
+    const formatValue = (chave: string, valor: any): string => {
+        if (chave === "Valor da Causa") {
+            const numero = Number(valor);
+            return !isNaN(numero)
+                ? numero.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                })
+                : `Sem ${chave}`;
+        }
+
+        if (chave === "Distribuição") {
+            let data: Date | null = null;
+            if (!isNaN(Number(valor))) {
+                const serial = Number(valor);
+                const utc_days = Math.floor(serial - 25569);
+                const utc_value = utc_days * 86400;
+                data = new Date(utc_value * 1000);
+                data.setHours(data.getHours() + 3);
+            } else if (typeof valor === "string") {
+                const partes = valor.split("/");
+                if (partes.length === 3) {
+                    const [dia, mes, ano] = partes.map(Number);
+                    if (!isNaN(dia) && !isNaN(mes) && !isNaN(ano)) {
+                        data = new Date(ano, mes - 1, dia);
+                    }
+                }
+            }
+            return data ? data.toLocaleDateString("pt-BR") : `Sem ${chave}`;
+        }
+
+        return valor && String(valor).trim() !== "" ? String(valor) : `Sem ${chave}`;
+    };
+
+    const restantesOrdenados = Object.entries(dados)
+        .filter(([chave]) => (
+            !destaqueCampos.includes(chave) &&
+            !["Tributos", "Multa", "Juros"].includes(chave)
+        ))
+        .sort((a, b) => String(a[1]).length - String(b[1]).length);
 
     return (
         <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
             <div
                 ref={pdfRef}
                 style={{
-                    width: "800px",
-                    padding: "40px",
-                    background: "#fff",
+                    width: "900px",
+                    padding: "20px",
+                    background: "#ffffff",
                     fontFamily: "Arial, sans-serif",
                 }}
             >
-                {/* Seção de Informações */}
-                <div id="info-section">
+                {/* Cabeçalho */}
+                <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
                     <img src="/logo.png" alt="Logo" style={{ width: 80 }} />
-
-                    <h1
-                        style={{
-                            flex: 1,
-                            textAlign: "center",
-                            margin: 0,
-                            fontSize: "22px",
-                            fontWeight: "bold",
-                            color: "#213547",
-                        }}
-                    >
-                        {fileName}
-                    </h1>
-
-                    <div style={{ textAlign: "right", fontSize: "12px", color: "#213547" }}>
-                        <div><strong>Relatório</strong></div>
-                        <div>{tabName}</div>
-                        <div>Processo</div>
-                        <div style={{ fontSize: "11px" }}>{selectedProcesso}</div>
-                    </div>
-
-                    <div
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(3, 1fr)",
-                            gap: "16px",
-                            fontSize: "12px",
-                            marginBottom: "40px",
-                        }}
-                    >
-                        {Object.entries(dados).map(([chave, valor]) => {
-                            let displayValue = `Sem ${chave}`;
-
-                            if (chave === "Valor da Causa") {
-                                const numero = Number(valor);
-                                displayValue = !isNaN(numero)
-                                    ? numero.toLocaleString("pt-BR", {
-                                        style: "currency",
-                                        currency: "BRL",
-                                    })
-                                    : `Sem ${chave}`;
-                            } else if (chave === "Distribuição") {
-                                let data: Date | null = null;
-
-                                if (!isNaN(Number(valor))) {
-                                    const serial = Number(valor);
-                                    const utc_days = Math.floor(serial - 25569);
-                                    const utc_value = utc_days * 86400;
-                                    data = new Date(utc_value * 1000);
-                                    data.setHours(data.getHours() + 3);
-                                } else if (typeof valor === "string") {
-                                    const partes = valor.split("/");
-                                    if (partes.length === 3) {
-                                        const [dia, mes, ano] = partes.map(Number);
-                                        if (!isNaN(dia) && !isNaN(mes) && !isNaN(ano)) {
-                                            data = new Date(ano, mes - 1, dia);
-                                        }
-                                    }
-                                }
-
-                                displayValue = data
-                                    ? data.toLocaleDateString("pt-BR")
-                                    : `Sem ${chave}`;
-                            } else {
-                                displayValue =
-                                    valor && String(valor).trim() !== ""
-                                        ? String(valor)
-                                        : `Sem ${chave}`;
-                            }
-
-                            return (
-                                <div
-                                    key={chave}
-                                    style={{
-                                        border: "1px solid #ddd",
-                                        borderRadius: 6,
-                                        padding: "10px",
-                                        background: "#f9f9f9",
-                                    }}
-                                >
-                                    <strong>{chave}</strong>
-                                    <br />
-                                    {displayValue}
-                                </div>
-                            );
-                        })}
+                    <div style={{ flexGrow: 1, textAlign: "center" }}>
+                        <h1 style={{ fontSize: "20px", margin: 0, fontWeight: "bold" }}>
+                            {fileName.replace(/ - Relatório$/i, "")}
+                        </h1>
+                        <p style={{ margin: 0, fontWeight: "bold" }}>
+                            {tabName} — Processo: {selectedProcesso}
+                        </p>
                     </div>
                 </div>
 
-                {/* Gráfico separado (sem título) */}
-                <div
-                    id="graph-section"
-                    style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        minHeight: "400px",
-                        marginTop: "20px",
-                    }}
-                >
-                    <div style={{ width: "350px", height: "350px" }}>
+                {/* Corpo: gráfico + info */}
+                <div style={{ display: "flex", gap: "32px" }}>
+                    {/* Gráfico */}
+                    <div style={{ width: "360px", height: "360px", flexShrink: 0 }}>
                         <PieChartCard
                             tributos={mostrarSomenteValorCausa ? 0 : tributos}
                             multa={mostrarSomenteValorCausa ? 0 : multa}
@@ -202,7 +131,109 @@ const PDFExporter: React.FC<ExportPDFProps> = ({
                             valorCausa={mostrarSomenteValorCausa ? valorCausa : 0}
                         />
                     </div>
+
+                    {/* Informações */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {/* Supercaixa compacta */}
+                        <div
+                            style={{
+                                background: "#f3f4f6",
+                                borderRadius: "10px",
+                                padding: "4px 8px",
+                                display: "flex",
+                                justifyContent: "flex-start",
+                                alignItems: "center",
+                                gap: "6px",
+                                flexWrap: "wrap",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                            }}
+                        >
+                            {destaqueCampos.map((chave) => (
+                                <div key={chave} style={{ minWidth: "100px", flex: "1 0 auto" }}>
+                                    <div style={{ fontSize: "10px", color: "#6b7280", fontWeight: 600 }}>
+                                        {chave}
+                                    </div>
+                                    <div style={{ fontSize: "11px", color: "#111827" }}>
+                                        {formatValue(chave, dados[chave])}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Demais cards (exceto os 2 últimos) */}
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                gap: "6px",
+                            }}
+                        >
+                            {restantesOrdenados.slice(0, -2).map(([chave, valor]) => (
+                                <div
+                                    key={chave}
+                                    style={{
+                                        background: "#ffffff",
+                                        borderRadius: "8px",
+                                        padding: "12px",
+                                        border: "1px solid #e5e7eb",
+                                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                    }}
+                                >
+                                    <strong style={{ fontSize: "12px", color: "#374151" }}>{chave}</strong>
+                                    <div
+                                        style={{
+                                            fontSize: "13px",
+                                            color: "#111827",
+                                            marginTop: "4px",
+                                            whiteSpace: "pre-wrap",
+                                        }}
+                                    >
+                                        {formatValue(chave, valor)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
+
+                {/* Últimos dois cards abaixo do gráfico */}
+                {restantesOrdenados.length >= 2 && (
+                    <div
+                        style={{
+                            display: "flex",
+                            gap: "12px",
+                            marginTop: "24px",
+                            justifyContent: "center",
+                        }}
+                    >
+                        {restantesOrdenados.slice(-2).map(([chave, valor]) => (
+                            <div
+                                key={chave}
+                                style={{
+                                    background: "#ffffff",
+                                    borderRadius: "8px",
+                                    padding: "12px",
+                                    border: "1px solid #e5e7eb",
+                                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                    maxWidth: "400px",
+                                    width: "100%",
+                                }}
+                            >
+                                <strong style={{ fontSize: "12px", color: "#374151" }}>{chave}</strong>
+                                <div
+                                    style={{
+                                        fontSize: "13px",
+                                        color: "#111827",
+                                        marginTop: "4px",
+                                        whiteSpace: "pre-wrap",
+                                    }}
+                                >
+                                    {formatValue(chave, valor)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
