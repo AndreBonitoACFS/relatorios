@@ -25,7 +25,6 @@ const PDFExporter: React.FC<ExportPDFProps> = ({
     onFinish,
 }) => {
     const pdfRef = useRef<HTMLDivElement | null>(null);
-
     const generatedRef = useRef(false);
 
     useEffect(() => {
@@ -41,23 +40,42 @@ const PDFExporter: React.FC<ExportPDFProps> = ({
     const generatePDF = async () => {
         if (!pdfRef.current) return;
 
-        const canvas = await html2canvas(pdfRef.current, {
-            scale: 2,
-            useCORS: true,
-        });
+        const infoSection = pdfRef.current.querySelector("#info-section") as HTMLElement;
+        const graphSection = pdfRef.current.querySelector("#graph-section") as HTMLElement;
 
-        const imgData = canvas.toDataURL("image/png");
+        if (!infoSection || !graphSection) return;
+
         const pdf = new jsPDF("p", "mm", "a4");
-
         const pageWidth = pdf.internal.pageSize.getWidth();
-        const ratio = canvas.height / canvas.width;
-        const imgHeight = pageWidth * ratio;
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const usableWidth = pageWidth - margin * 2;
 
-        pdf.setFontSize(20);
-        pdf.setTextColor(33, 53, 71);
-        pdf.text(`${fileName} - Relatório`, 20, 20);
+        // Captura da parte informativa
+        const infoCanvas = await html2canvas(infoSection, { scale: 2, useCORS: true });
+        const infoImg = infoCanvas.toDataURL("image/png");
+        const infoHeight = (infoCanvas.height * usableWidth) / infoCanvas.width;
 
-        pdf.addImage(imgData, "PNG", 0, 0, pageWidth, imgHeight);
+        // Se couber tudo em uma página, inclui gráfico junto
+        if (infoHeight + 160 <= pageHeight - margin * 2) {
+            const fullCanvas = await html2canvas(pdfRef.current, { scale: 2, useCORS: true });
+            const fullImg = fullCanvas.toDataURL("image/png");
+            const fullHeight = (fullCanvas.height * usableWidth) / fullCanvas.width;
+
+            pdf.addImage(fullImg, "PNG", margin, margin, usableWidth, fullHeight);
+        } else {
+            // Página 1: informações
+            pdf.addImage(infoImg, "PNG", margin, margin, usableWidth, infoHeight);
+
+            // Página 2: gráfico
+            const graphCanvas = await html2canvas(graphSection, { scale: 2, useCORS: true });
+            const graphImg = graphCanvas.toDataURL("image/png");
+            const graphHeight = (graphCanvas.height * usableWidth) / graphCanvas.width;
+
+            pdf.addPage();
+            pdf.addImage(graphImg, "PNG", margin, margin, usableWidth, graphHeight);
+        }
+
         pdf.save(`relatorio_${tabName}_${selectedProcesso}.pdf`);
         onFinish();
     };
@@ -73,101 +91,109 @@ const PDFExporter: React.FC<ExportPDFProps> = ({
                     fontFamily: "Arial, sans-serif",
                 }}
             >
-                {/* Logo à esquerda */}
-                <img src="/logo.png" alt="Logo" style={{ width: 80 }} />
+                {/* Seção de Informações */}
+                <div id="info-section">
+                    <img src="/logo.png" alt="Logo" style={{ width: 80 }} />
 
-                {/* Nome da empresa centralizado */}
-                <h1 style={{
-                    flex: 1,
-                    textAlign: "center",
-                    margin: 0,
-                    fontSize: "22px",
-                    fontWeight: "bold",
-                    color: "#213547"
-                }}>
-                    {fileName}
-                </h1>
+                    <h1
+                        style={{
+                            flex: 1,
+                            textAlign: "center",
+                            margin: 0,
+                            fontSize: "22px",
+                            fontWeight: "bold",
+                            color: "#213547",
+                        }}
+                    >
+                        {fileName}
+                    </h1>
 
-                {/* Informações à direita */}
-                <div style={{ textAlign: "right", fontSize: "12px", color: "#213547" }}>
-                    <div><strong>Relatório</strong></div>
-                    <div>{tabName}</div>
-                    <div>Processo</div>
-                    <div style={{ fontSize: "11px" }}>{selectedProcesso}</div>
-                </div>
+                    <div style={{ textAlign: "right", fontSize: "12px", color: "#213547" }}>
+                        <div><strong>Relatório</strong></div>
+                        <div>{tabName}</div>
+                        <div>Processo</div>
+                        <div style={{ fontSize: "11px" }}>{selectedProcesso}</div>
+                    </div>
 
-                {/* Tabela de Informações */}
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gap: "16px",
-                        fontSize: "12px",
-                        marginBottom: "40px",
-                    }}
-                >
-                    {Object.entries(dados).map(([chave, valor]) => {
-                        let displayValue = `Sem ${chave}`;
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(3, 1fr)",
+                            gap: "16px",
+                            fontSize: "12px",
+                            marginBottom: "40px",
+                        }}
+                    >
+                        {Object.entries(dados).map(([chave, valor]) => {
+                            let displayValue = `Sem ${chave}`;
 
-                        if (chave === "Valor da Causa") {
-                            const numero = Number(valor);
-                            displayValue = !isNaN(numero)
-                                ? numero.toLocaleString("pt-BR", {
-                                    style: "currency",
-                                    currency: "BRL",
-                                })
-                                : `Sem ${chave}`;
+                            if (chave === "Valor da Causa") {
+                                const numero = Number(valor);
+                                displayValue = !isNaN(numero)
+                                    ? numero.toLocaleString("pt-BR", {
+                                        style: "currency",
+                                        currency: "BRL",
+                                    })
+                                    : `Sem ${chave}`;
+                            } else if (chave === "Distribuição") {
+                                let data: Date | null = null;
 
-                        } else if (chave === "Distribuição") {
-                            let data: Date | null = null;
-
-                            if (!isNaN(Number(valor))) {
-                                // número serial do Excel
-                                const serial = Number(valor);
-                                const utc_days = Math.floor(serial - 25569);
-                                const utc_value = utc_days * 86400;
-                                data = new Date(utc_value * 1000);
-                                data.setHours(data.getHours() + 3);
-                            } else if (typeof valor === "string") {
-                                const partes = valor.split("/");
-                                if (partes.length === 3) {
-                                    const [dia, mes, ano] = partes.map(Number);
-                                    if (!isNaN(dia) && !isNaN(mes) && !isNaN(ano)) {
-                                        data = new Date(ano, mes - 1, dia);
+                                if (!isNaN(Number(valor))) {
+                                    const serial = Number(valor);
+                                    const utc_days = Math.floor(serial - 25569);
+                                    const utc_value = utc_days * 86400;
+                                    data = new Date(utc_value * 1000);
+                                    data.setHours(data.getHours() + 3);
+                                } else if (typeof valor === "string") {
+                                    const partes = valor.split("/");
+                                    if (partes.length === 3) {
+                                        const [dia, mes, ano] = partes.map(Number);
+                                        if (!isNaN(dia) && !isNaN(mes) && !isNaN(ano)) {
+                                            data = new Date(ano, mes - 1, dia);
+                                        }
                                     }
                                 }
+
+                                displayValue = data
+                                    ? data.toLocaleDateString("pt-BR")
+                                    : `Sem ${chave}`;
+                            } else {
+                                displayValue =
+                                    valor && String(valor).trim() !== ""
+                                        ? String(valor)
+                                        : `Sem ${chave}`;
                             }
 
-                            displayValue = data
-                                ? data.toLocaleDateString("pt-BR")
-                                : `Sem ${chave}`;
-                        } else {
-                            displayValue =
-                                valor && String(valor).trim() !== ""
-                                    ? String(valor)
-                                    : `Sem ${chave}`;
-                        }
-
-                        return (
-                            <div
-                                key={chave}
-                                style={{
-                                    border: "1px solid #ddd",
-                                    borderRadius: 6,
-                                    padding: "10px",
-                                    background: "#f9f9f9",
-                                }}
-                            >
-                                <strong>{chave}</strong>
-                                <br />
-                                {displayValue}
-                            </div>
-                        );
-                    })}
+                            return (
+                                <div
+                                    key={chave}
+                                    style={{
+                                        border: "1px solid #ddd",
+                                        borderRadius: 6,
+                                        padding: "10px",
+                                        background: "#f9f9f9",
+                                    }}
+                                >
+                                    <strong>{chave}</strong>
+                                    <br />
+                                    {displayValue}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
-                {/* Gráfico */}
-                <div style={{ display: "flex", justifyContent: "center" }}>
+                {/* Gráfico separado (sem título) */}
+                <div
+                    id="graph-section"
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        minHeight: "400px",
+                        marginTop: "20px",
+                    }}
+                >
                     <div style={{ width: "350px", height: "350px" }}>
                         <PieChartCard
                             tributos={mostrarSomenteValorCausa ? 0 : tributos}
