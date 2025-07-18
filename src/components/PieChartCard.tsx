@@ -61,11 +61,11 @@ const PieChartCard: React.FC<PieChartCardProps> = ({
 
     return (
         <div>
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">
+            {/* <h3 className="text-lg font-semibold text-gray-700 mb-4">
                 {valorCausa && tributos === 0 && multa === 0 && juros === 0
                     ? "Valor da Causa"
                     : "Distribuição de Valores"}
-            </h2>
+            </h3> */}
 
             <ResponsiveContainer width={400} height={280}>
                 <PieChart>
